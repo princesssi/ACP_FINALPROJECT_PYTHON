@@ -1,0 +1,536 @@
+import tkinter as tk
+from tkinter import messagebox, simpledialog
+import re
+from abc import ABC, abstractmethod
+from typing import Dict
+import restaurant_Database
+
+class Orderable(ABC):
+    @abstractmethod
+    def add_item_to_cart(self, quantity: int):
+        pass
+
+    @abstractmethod
+    def calculate_price(self) -> float:
+        pass
+
+    @abstractmethod
+    def display_details(self):
+        pass
+
+
+class FoodItem(Orderable, ABC):
+    def __init__(self, item_name: str, price: float):
+        self.item_name = item_name
+        self.price = price
+
+    def get_item_name(self) -> str:
+        return self.item_name
+
+    def get_price(self) -> float:
+        return self.price
+
+    @abstractmethod
+    def calculate_price(self) -> float:
+        pass
+
+    def display_details(self):
+        print(f"Item: {self.item_name} - Price: {self.price}")
+
+    def add_item_to_cart(self, quantity: int):
+        print(f"Adding {quantity} of {self.item_name} to the cart.")
+
+
+class Appetizer(FoodItem):
+    def __init__(self, item_name: str, price: float):
+        super().__init__(item_name, price)
+
+    def calculate_price(self) -> float:
+        return self.get_price()
+
+
+class MainCourse(FoodItem):
+    def __init__(self, item_name: str, price: float):
+        super().__init__(item_name, price)
+
+    def calculate_price(self) -> float:
+        return self.get_price() * 1.2
+
+
+class Dessert(FoodItem):
+    def __init__(self, item_name: str, price: float):
+        super().__init__(item_name, price)
+
+    def calculate_price(self) -> float:
+        return self.get_price() * 1.1
+
+
+class Drink(FoodItem):
+    def __init__(self, item_name: str, price: float):
+        super().__init__(item_name, price)
+
+    def calculate_price(self) -> float:
+        return self.get_price()
+
+
+class Order:
+    total_donations = 0.0
+    
+    def __init__(self, customer):
+        self.cart: Dict[Orderable, int] = {}
+        self.customer = customer
+        self.donation_amount = 0.0
+        self.total_paid = 0.0
+        self.change = 0.0
+
+    def add_item_to_cart(self, item: Orderable, quantity: int):
+        self.cart[item] = quantity
+
+    def calculate_total(self) -> float:
+        total = 0
+        for item, quantity in self.cart.items():
+            total += item.calculate_price() * quantity
+        total += self.donation_amount
+        return total
+
+    def calculate_change(self) -> float:
+        return self.total_paid - self.calculate_total()
+
+    def display_receipt(self):
+        receipt = "";
+
+        # Display ordered items first
+        for item, quantity in self.cart.items():
+            receipt += f"{item.get_item_name()} - Quantity: {quantity} - Price: {item.calculate_price() * quantity}\n"
+
+        # Donation and totals
+        receipt += f"Donation: {self.donation_amount}\n"
+        receipt += f"Total: {self.calculate_total()}\n"
+        receipt += f"Amount Paid: {self.total_paid}\n"
+        receipt += f"Change: {self.change}\n"
+        receipt += "------------------\n"
+
+        # Now add the customer details at the bottom
+        receipt += f"Customer Name: {self.customer.get_name()}\n"
+        receipt += f"Customer Address: {self.customer.get_address()}\n"
+        receipt += f"Customer Phone: {self.customer.get_phone()}\n"
+        receipt += "------------------\n"
+        
+        # Total donations collected
+        receipt += f"Total Donations Collected So Far: ₱{Order.total_donations:.2f}\n"
+        
+        return receipt
+
+class Customer:
+    def __init__(self, name: str, address: str, phone: str):
+        self.name = name
+        self.address = address
+        self.phone = phone
+
+    def get_name(self) -> str:
+        return self.name
+
+    def get_address(self) -> str:
+        return self.address
+
+    def get_phone(self) -> str:
+        return self.phone
+
+
+# Helper function to validate phone number with 11 digits
+def validate_phone_number(phone: str) -> bool:
+    return bool(re.match(r'^\d{11}$', phone))
+
+class RestaurantApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Nicole's Restaurant")
+        self.root.geometry("600x700")
+
+        self.customer = None
+        self.order = None
+
+        # Store registered users
+        self.registered_users = {}
+
+        # Menu categories
+        self.menu = {
+            "Appetizers": {
+                "Chicken Caesar Salad": Appetizer("Chicken Caesar Salad", 190),
+                "Carrot Fries": Appetizer("Carrot Fries", 85),
+                "Onion Rings": Appetizer("Onion Rings", 65),
+            },
+            "Main Courses": {
+                "Shrimp in Garlic Butter Aligue Sauce": MainCourse("Shrimp in Garlic Butter Aligue Sauce", 350),
+                "Cheesy Baked Scallops": MainCourse("Cheesy Baked Scallops", 285),
+                "Lasagna": MainCourse("Lasagna", 245),
+                "Baked Salmon with Lemon": MainCourse("Baked Salmon with Lemon", 465),
+            },
+            "Desserts": {
+                "Leche Flan": Dessert("Leche Flan", 100),
+                "Cheesecake (slice)": Dessert("Cheesecake (slice)", 135),
+                "Cookies": Dessert("Cookies", 70),
+            },
+            "Drinks": {
+                "Mountain Dew": Drink("Mountain Dew", 30),
+                "Coke in Can": Drink("Coke in Can", 50),
+                "Mineral Water": Drink("Mineral Water", 30),
+                "Coke Zero in Can": Drink("Coke Zero in Can", 50),
+                "Red Iced Tea": Drink("Red Iced Tea", 65),
+            }
+        }
+
+        self.show_register_login_screen()
+
+    def show_register_login_screen(self):
+        self.clear_window()
+
+        # Frame to center everything
+        frame = tk.Frame(self.root)
+        frame.pack(expand=True, fill="both")
+
+        # Welcome text with larger font
+        title = tk.Label(frame, text="Welcome to Nicole's Restaurant", font=("Helvetica", 24, "bold"))
+        title.pack(pady=20)
+
+        # Frame to hold buttons and align them vertically
+        buttons_frame = tk.Frame(frame)
+        buttons_frame.pack(pady=20)
+
+        # Register and Login buttons with adjusted font size
+        register_button = tk.Button(buttons_frame, text="Register", width=20, font=("Helvetica", 14), command=self.show_register_screen)
+        register_button.pack(pady=10)
+    
+        login_button = tk.Button(buttons_frame, text="Login", width=20, font=("Helvetica", 14), command=self.show_login_screen)
+        login_button.pack(pady=10)
+
+    def show_register_screen(self):
+        self.clear_window()
+
+        frame = tk.Frame(self.root)
+        frame.pack(expand=True, fill="both")
+
+        title = tk.Label(frame, text="Register", font=("Helvetica", 24, "bold"))
+        title.pack(pady=20)
+
+        # Name input
+        name_label = tk.Label(frame, text="Name:", font=("Helvetica", 14))
+        name_label.pack(pady=5)
+        self.name_entry = tk.Entry(frame, font=("Helvetica", 14), width=30)
+        self.name_entry.pack(pady=5)
+
+        # Address input
+        address_label = tk.Label(frame, text="Address:", font=("Helvetica", 14))
+        address_label.pack(pady=5)
+        self.address_entry = tk.Entry(frame, font=("Helvetica", 14), width=30)
+        self.address_entry.pack(pady=5)
+
+        # Phone input
+        phone_label = tk.Label(frame, text="Phone (11 digits):", font=("Helvetica", 14))
+        phone_label.pack(pady=5)
+        self.phone_entry = tk.Entry(frame, font=("Helvetica", 14), width=30)
+        self.phone_entry.pack(pady=5)
+
+        # Register button
+        register_button = tk.Button(frame, text="Register", font=("Helvetica", 16), command=self.register_customer)
+        register_button.pack(pady=20)
+
+    def show_login_screen(self):
+        self.clear_window()
+
+        frame = tk.Frame(self.root)
+        frame.pack(expand=True, fill="both")
+
+        title = tk.Label(frame, text="Login", font=("Helvetica", 24, "bold"))
+        title.pack(pady=20)
+
+        # Name input
+        name_label = tk.Label(frame, text="Name:", font=("Helvetica", 14))
+        name_label.pack(pady=5)
+        self.name_entry = tk.Entry(frame, font=("Helvetica", 14), width=30)
+        self.name_entry.pack(pady=5)
+
+        # Address input
+        address_label = tk.Label(frame, text="Address:", font=("Helvetica", 14))
+        address_label.pack(pady=5)
+        self.address_entry = tk.Entry(frame, font=("Helvetica", 14), width=30)
+        self.address_entry.pack(pady=5)
+
+        # Phone input
+        phone_label = tk.Label(frame, text="Phone (11 digits):", font=("Helvetica", 14))
+        phone_label.pack(pady=5)
+        self.phone_entry = tk.Entry(frame, font=("Helvetica", 14), width=30)
+        self.phone_entry.pack(pady=5)
+
+        # Login button
+        login_button = tk.Button(frame, text="Login", font=("Helvetica", 16), command=self.login_customer)
+        login_button.pack(pady=20)
+
+    def clear_window(self):
+        for widget in self.root.winfo_children():
+            widget.destroy() 
+
+    def register_customer(self):
+        name = self.name_entry.get()
+        address = self.address_entry.get()
+        phone = self.phone_entry.get()
+
+        if not validate_phone_number(phone):
+            messagebox.showerror("Error", "Please enter a valid 11-digit phone number.")
+            return
+
+        if phone in self.registered_users:
+            messagebox.showerror("Error", "This phone number is already registered.")
+            return
+
+        # Create new customer and register
+        self.customer = Customer(name, address, phone)
+        self.registered_users[phone] = self.customer
+        self.order = Order(self.customer)
+
+        messagebox.showinfo("Success", f"Welcome, {name}! You have successfully registered.")
+        self.show_order_screen()
+
+    def login_customer(self):
+        name = self.name_entry.get().strip()
+        address = self.address_entry.get().strip()
+        phone = self.phone_entry.get().strip()
+
+        # Validate phone format
+        if not validate_phone_number(phone):
+            messagebox.showerror("Error", "Invalid phone number. Please enter an 11-digit phone number.")
+            return
+
+        # Check if phone is registered
+        if phone not in self.registered_users:
+            messagebox.showerror(
+                "Error",
+                "This phone number is not registered. Please register first."
+            )
+            self.show_register_screen()  # Redirect to registration screen if not found
+            return
+
+        # Validate name and address against the registered user
+        customer = self.registered_users[phone]
+        if name != customer.get_name():
+            messagebox.showerror("Error", "The name entered does not match our records.")
+            return
+
+        if address != customer.get_address():
+            messagebox.showerror("Error", "The address entered does not match our records.")
+            return
+
+        # Log in the customer if all validations pass
+        self.customer = customer
+        self.order = Order(self.customer)
+
+        messagebox.showinfo("Success", f"Welcome back, {name}!")
+        self.show_order_screen()
+
+    def show_order_screen(self):
+        self.clear_window()
+
+        # Configure the root grid layout
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=5)
+        self.root.grid_rowconfigure(2, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+
+        # Title
+        title = tk.Label(self.root, text="Order Menu", font=("Helvetica", 20))
+        title.grid(row=0, column=0, pady=20)
+
+        # Frame to hold menu categories
+        categories_frame = tk.Frame(self.root)
+        categories_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+
+        # Configure categories_frame grid layout
+        categories_frame.grid_rowconfigure(0, weight=1)
+        categories_frame.grid_rowconfigure(1, weight=1)
+        categories_frame.grid_columnconfigure(0, weight=1)
+        categories_frame.grid_columnconfigure(1, weight=1)
+
+        # Create category frames
+        self.create_category_frame(categories_frame, "Main Courses", 0, 0)
+        self.create_category_frame(categories_frame, "Appetizers", 0, 1)
+        self.create_category_frame(categories_frame, "Desserts", 1, 0)
+        self.create_category_frame(categories_frame, "Drinks", 1, 1)
+
+        # Place Order button at the bottom
+        done_button = tk.Button(self.root, text="Place Order", width=20, command=self.show_checkout_screen)
+        done_button.grid(row=2, column=0, pady=20)
+
+    def create_category_frame(self, parent, category_name, row, column):
+        """Helper function to create a category frame with menu items."""
+        frame = tk.LabelFrame(parent, text=category_name, font=("Helvetica", 14), padx=10, pady=10)
+        frame.grid(row=row, column=column, sticky="nsew", padx=10, pady=10)
+
+        # Configure the grid inside the frame
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(1, weight=1)
+
+        # Get menu items for the category
+        menu_items = self.menu.get(category_name, {})
+
+        # Arrange items in two columns for all categories
+        for idx, (item_name, item_obj) in enumerate(menu_items.items()):
+            button = tk.Button(
+            frame,
+            text=f"{item_name}\n₱{item_obj.get_price():.2f}",
+            command=lambda item=item_obj: self.add_item_to_cart(item),
+            width=25,
+            height=2
+            
+        )
+        # Place items in two columns
+            button.grid(row=idx // 2, column=idx % 2, padx=5, pady=5)
+
+    def add_item_to_cart(self, item):
+        quantity = simpledialog.askinteger("Quantity", f"How many {item.get_item_name()}?")
+        if quantity is None:
+            return
+        if quantity <= 0:
+            messagebox.showerror("Invalid Quantity", "Please enter a positive number.")
+            return
+        self.order.add_item_to_cart(item, quantity)
+        messagebox.showinfo("Added to cart", f"Added {quantity} of {item.get_item_name()} to your cart.")
+
+    def show_checkout_screen(self):
+        self.clear_window()
+
+        title = tk.Label(self.root, text="Checkout", font=("Helvetica", 20, "bold"))
+        title.pack(pady=20)
+
+        # Total Label
+        total_label = tk.Label(self.root, text=f"Total: ₱{self.order.calculate_total():.2f}", font=("Helvetica", 16))
+        total_label.pack(pady=10)
+
+        # Asking donation after confirming order
+        donation_choice = simpledialog.askstring("Donation", "Would you like to donate for hunger relief? (Yes/No)").strip().lower()
+        
+        if donation_choice == "yes":
+            # Donation entry section with larger font
+            donation_amount_label = tk.Label(self.root, text="Enter donation amount:", font=("Helvetica", 14))
+            donation_amount_label.pack(pady=5)
+        
+            self.donation_entry = tk.Entry(self.root, font=("Helvetica", 14))
+            self.donation_entry.pack(pady=5)
+
+            donate_button = tk.Button(
+                self.root,
+                text="Donate",
+                font=("Helvetica", 14),
+                command=self.handle_donation,
+            )
+            donate_button.pack(pady=10)
+            
+        elif donation_choice == "no":
+            messagebox.showinfo("No Donation", "You chose not to donate. Proceeding to payment.")
+        
+        # Checkout button with larger font
+        checkout_button = tk.Button(
+            self.root,
+            text="Checkout",
+            font=("Helvetica", 16),
+            command=self.process_payment,
+        )
+        checkout_button.pack(pady=20)   
+
+    def handle_donation(self):
+        try:
+            donation_amount = float(self.donation_entry.get())
+            if donation_amount < 0:
+                raise ValueError
+            self.order.donation_amount = donation_amount
+
+            # Update the total donations
+            Order.total_donations += donation_amount
+
+            customer_name = self.customer.get_name()
+            messagebox.showinfo(
+                "Donation",
+                f"Thank you for your donation, {customer_name}. Your donation helps combat hunger and supports food programs. Your total will now include the donation of ₱{donation_amount:.2f}."
+            )
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid donation amount.")
+
+    def process_payment(self):
+            total_cost = self.order.calculate_total()
+            amount_paid = simpledialog.askfloat(
+            "Payment", f"Total amount due: ₱{total_cost:.2f}. How much are you paying?"
+        )
+            if amount_paid is None or amount_paid < total_cost:
+               messagebox.showerror("Error", "Insufficient payment. Please enter a valid amount.")
+               return
+
+            self.order.total_paid = amount_paid
+            self.order.change = self.order.calculate_change()
+
+        # Proceed to receipt screen
+            self.show_receipt_screen()
+    
+    def show_receipt_screen(self):
+            self.clear_window()
+
+            title = tk.Label(self.root, text="Receipt", font=("Helvetica", 20, "bold"))
+            title.pack(pady=20)
+
+            receipt = self.order.display_receipt()
+
+        # Display receipt
+            receipt_text = tk.Text(self.root, font=("Helvetica", 14), wrap="word", height=20, width=60)
+            receipt_text.insert("1.0", receipt)
+            receipt_text.configure(state="disabled")  # Read-only
+            receipt_text.pack(pady=10)
+
+        # Next button to proceed to the Thank You screen
+            next_button = tk.Button(
+            self.root,
+            text="Next",
+            font=("Helvetica", 16),
+            command=self.show_thank_you_screen,
+        )
+            next_button.pack(pady=20)
+
+    def show_thank_you_screen(self):
+        self.clear_window()
+
+        # Display Thank You message
+        thank_you_label = tk.Label(
+            self.root, text="Thank you for dining with us!", font=("Helvetica", 24, "italic")
+        )
+        thank_you_label.pack(pady=20)
+
+        # Buttons for further actions
+        button_frame = tk.Frame(self.root)
+        button_frame.pack(pady=20)
+
+        # Order Again button
+        order_again_button = tk.Button(
+            button_frame,
+            text="Order Again",
+            font=("Helvetica", 16),
+            command=self.show_order_screen,  # Go back to the menu
+        )
+        order_again_button.pack(side="left", padx=10)
+
+        # Log Out button
+        logout_button = tk.Button(
+            button_frame,
+            text="Log Out",
+            font=("Helvetica", 16),
+            command=self.show_register_login_screen,  # Go back to the welcome screen
+        )
+        logout_button.pack(side="left", padx=10)
+    
+    def clear_window(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+def run_app():
+    root = tk.Tk()
+    app = RestaurantApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    run_app()
