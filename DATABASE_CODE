@@ -1,0 +1,160 @@
+import mysql.connector
+from mysql.connector import Error
+import tkinter as tk
+from tkinter import messagebox
+
+# Database class to manage MySQL operations
+class Database:
+    def __init__(self):
+        self.host = "localhost"
+        self.database = "restaurantsystem_db"
+        self.user = "root"  # replace with your MySQL username
+        self.password = ""  # replace with your MySQL password
+        self.connection = None
+        self.connected = False
+
+    def connect(self):
+        """Establish a connection to the database."""
+        try:
+            print("Attempting to connect to database...")
+            self.connection = mysql.connector.connect(
+                host=self.host,
+                database=self.database,
+                user=self.user,
+                password=self.password
+            )
+            if self.connection.is_connected():
+                self.connected = True
+                print("Database connection successful")
+        except Error as e:
+            print(f"Database connection error: {e}")
+            self.connected = False
+
+    def close(self):
+        """Close the database connection."""
+        if self.connection and self.connection.is_connected():
+            self.connection.close()
+            print("Database connection closed")
+
+    def execute_query(self, query, data=None):
+        """Execute a query in the database."""
+        if not self.connected:
+            print("Not connected to the database!")
+            return None
+
+        cursor = self.connection.cursor()
+        try:
+            if data:
+                cursor.execute(query, data)
+            else:
+                cursor.execute(query)
+            
+            # Fetch the results to consume any pending results
+            if cursor.description:  # Only fetch if there's a result set (e.g., SELECT query)
+                cursor.fetchall()  # Consume the result to avoid 'Unread result found' error
+            
+            self.connection.commit()  # Commit the transaction
+            return cursor  # Return cursor for further actions if needed
+        except Error as e:
+            print(f"Error executing query: {e}")
+            return None
+
+    def fetch_all(self, query, data=None):
+        """Fetch all rows from the database."""
+        cursor = self.execute_query(query, data)
+        return cursor.fetchall() if cursor else []
+
+    def fetch_one(self, query, data=None):
+        """Fetch a single row from the database."""
+        cursor = self.execute_query(query, data)
+        return cursor.fetchone() if cursor else None
+
+    def register_customer(self, name, address, phone):
+        """Register a new customer in the database."""
+        # Check if phone already exists
+        query = "SELECT * FROM customers WHERE phone = %s"
+        result = self.fetch_one(query, (phone,))
+        
+        if result:
+            print(f"Phone number {phone} already exists.")
+            return False  # Phone number already exists
+
+        # Insert new customer into the database
+        query = "INSERT INTO customers (name, address, phone) VALUES (%s, %s, %s)"
+        self.execute_query(query, (name, address, phone))
+
+        # Get the customer_id of the newly inserted customer
+        query = "SELECT LAST_INSERT_ID()"
+        result = self.fetch_one(query)
+        customer_id = result[0] if result else None
+        return customer_id  # Return the new customer's ID
+
+# Tkinter application code
+class Application:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Customer Registration")
+        self.root.geometry("400x400")  # Set a fixed size
+        self.root.resizable(False, False)  # Prevent resizing
+
+        # Initialize the database
+        self.db = Database()
+
+        # Start the database connection
+        self.db.connect()
+
+        # UI Elements
+        self.name_label = tk.Label(root, text="Name:")
+        self.name_label.pack(pady=10)
+        self.name_entry = tk.Entry(root)
+        self.name_entry.pack(pady=10)
+
+        self.address_label = tk.Label(root, text="Address:")
+        self.address_label.pack(pady=10)
+        self.address_entry = tk.Entry(root)
+        self.address_entry.pack(pady=10)
+
+        self.phone_label = tk.Label(root, text="Phone:")
+        self.phone_label.pack(pady=10)
+        self.phone_entry = tk.Entry(root)
+        self.phone_entry.pack(pady=10)
+
+        self.register_button = tk.Button(root, text="Register", command=self.register_customer)
+        self.register_button.pack(pady=20)
+
+    def register_customer(self):
+        """Register customer after validating input."""
+        name = self.name_entry.get()
+        address = self.address_entry.get()
+        phone = self.phone_entry.get()
+
+        # Basic phone validation (you can customize this as needed)
+        if len(phone) != 11 or not phone.isdigit():
+            messagebox.showerror("Error", "Please enter a valid 11-digit phone number.")
+            return
+
+        # Ensure the database connection is established
+        if not self.db.connected:
+            messagebox.showerror("Error", "Database connection not established.")
+            return
+
+        # Register customer and get customer ID
+        customer_id = self.db.register_customer(name, address, phone)
+
+        if not customer_id:
+            messagebox.showerror("Error", "This phone number is already registered.")
+        else:
+            messagebox.showinfo("Success", f"Welcome, {name}! You have successfully registered.")
+            # You can proceed to the next part (e.g., order screen)
+
+    def on_closing(self):
+        """Close the database connection when exiting."""
+        self.db.close()
+        self.root.quit()
+
+# Start the Tkinter application
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = Application(root)
+    root.protocol("WM_DELETE_WINDOW", app.on_closing)  # Handle window closing
+    root.mainloop()
