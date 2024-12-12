@@ -1,3 +1,5 @@
+# RESTAURANT FOOD ORDERING SYSTEM
+
 I. A brief project overview
 - Restaurant Food Ordering System is a desktop-based application implemented in Python that will enable customers to be able to sign up, log into the system, and order food items easily. Graphical User Interface has been implemented using the Tkinter library to let the user see categories of menus, adding them into the cart for final payment of such orders. This application will encourage the user to donate toward the hunger relief programs in order to support the development on sustainability.
 
