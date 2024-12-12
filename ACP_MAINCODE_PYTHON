@@ -110,7 +110,6 @@ class Order:
         receipt += f"Change: {self.change}\n"
         receipt += "------------------\n"
 
-        # Now add the customer details at the bottom
         receipt += f"Customer Name: {self.customer.get_name()}\n"
         receipt += f"Customer Address: {self.customer.get_address()}\n"
         receipt += f"Customer Phone: {self.customer.get_phone()}\n"
@@ -137,7 +136,6 @@ class Customer:
         return self.phone
 
 
-# Helper function to validate phone number with 11 digits
 def validate_phone_number(phone: str) -> bool:
     return bool(re.match(r'^\d{11}$', phone))
 
@@ -189,15 +187,12 @@ class RestaurantApp:
         frame = tk.Frame(self.root)
         frame.pack(expand=True, fill="both")
 
-        # Welcome text with larger font
         title = tk.Label(frame, text="Welcome to Nicole's Restaurant", font=("Helvetica", 24, "bold"))
         title.pack(pady=20)
 
-        # Frame to hold buttons and align them vertically
         buttons_frame = tk.Frame(frame)
         buttons_frame.pack(pady=20)
 
-        # Register and Login buttons with adjusted font size
         register_button = tk.Button(buttons_frame, text="Register", width=20, font=("Helvetica", 14), command=self.show_register_screen)
         register_button.pack(pady=10)
     
@@ -301,7 +296,6 @@ class RestaurantApp:
             messagebox.showerror("Error", "Invalid phone number. Please enter an 11-digit phone number.")
             return
 
-        # Check if phone is registered
         if phone not in self.registered_users:
             messagebox.showerror(
                 "Error",
@@ -310,7 +304,6 @@ class RestaurantApp:
             self.show_register_screen()  # Redirect to registration screen if not found
             return
 
-        # Validate name and address against the registered user
         customer = self.registered_users[phone]
         if name != customer.get_name():
             messagebox.showerror("Error", "The name entered does not match our records.")
@@ -320,7 +313,6 @@ class RestaurantApp:
             messagebox.showerror("Error", "The address entered does not match our records.")
             return
 
-        # Log in the customer if all validations pass
         self.customer = customer
         self.order = Order(self.customer)
 
@@ -365,14 +357,11 @@ class RestaurantApp:
         frame = tk.LabelFrame(parent, text=category_name, font=("Helvetica", 14), padx=10, pady=10)
         frame.grid(row=row, column=column, sticky="nsew", padx=10, pady=10)
 
-        # Configure the grid inside the frame
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_columnconfigure(1, weight=1)
 
-        # Get menu items for the category
         menu_items = self.menu.get(category_name, {})
 
-        # Arrange items in two columns for all categories
         for idx, (item_name, item_obj) in enumerate(menu_items.items()):
             button = tk.Button(
             frame,
@@ -382,7 +371,6 @@ class RestaurantApp:
             height=2
             
         )
-        # Place items in two columns
             button.grid(row=idx // 2, column=idx % 2, padx=5, pady=5)
 
     def add_item_to_cart(self, item):
@@ -401,7 +389,6 @@ class RestaurantApp:
         title = tk.Label(self.root, text="Checkout", font=("Helvetica", 20, "bold"))
         title.pack(pady=20)
 
-        # Total Label
         total_label = tk.Label(self.root, text=f"Total: ₱{self.order.calculate_total():.2f}", font=("Helvetica", 16))
         total_label.pack(pady=10)
 
@@ -409,7 +396,6 @@ class RestaurantApp:
         donation_choice = simpledialog.askstring("Donation", "Would you like to donate for hunger relief? (Yes/No)").strip().lower()
         
         if donation_choice == "yes":
-            # Donation entry section with larger font
             donation_amount_label = tk.Label(self.root, text="Enter donation amount:", font=("Helvetica", 14))
             donation_amount_label.pack(pady=5)
         
@@ -427,7 +413,6 @@ class RestaurantApp:
         elif donation_choice == "no":
             messagebox.showinfo("No Donation", "You chose not to donate. Proceeding to payment.")
         
-        # Checkout button with larger font
         checkout_button = tk.Button(
             self.root,
             text="Checkout",
@@ -501,7 +486,6 @@ class RestaurantApp:
         )
         thank_you_label.pack(pady=20)
 
-        # Buttons for further actions
         button_frame = tk.Frame(self.root)
         button_frame.pack(pady=20)
 
