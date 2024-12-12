@@ -79,11 +79,9 @@ class Database:
             print(f"Phone number {phone} already exists.")
             return False  # Phone number already exists
 
-        # Insert new customer into the database
         query = "INSERT INTO customers (name, address, phone) VALUES (%s, %s, %s)"
         self.execute_query(query, (name, address, phone))
 
-        # Get the customer_id of the newly inserted customer
         query = "SELECT LAST_INSERT_ID()"
         result = self.fetch_one(query)
         customer_id = result[0] if result else None
@@ -128,17 +126,14 @@ class Application:
         address = self.address_entry.get()
         phone = self.phone_entry.get()
 
-        # Basic phone validation (you can customize this as needed)
         if len(phone) != 11 or not phone.isdigit():
             messagebox.showerror("Error", "Please enter a valid 11-digit phone number.")
             return
 
-        # Ensure the database connection is established
         if not self.db.connected:
             messagebox.showerror("Error", "Database connection not established.")
             return
 
-        # Register customer and get customer ID
         customer_id = self.db.register_customer(name, address, phone)
 
         if not customer_id:
